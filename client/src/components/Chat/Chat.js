@@ -465,8 +465,8 @@ const Chat = () => {
   useEffect(() => {
     if (!contactId) return;
 
-    const pusher = new Pusher("6fbb654a0e0b670de165", {
-      cluster: "ap2",
+    const pusher = new Pusher(process.env.REACT_APP_PUSHER_KEY || "6fbb654a0e0b670de165", {
+      cluster: process.env.REACT_APP_PUSHER_CLUSTER || "ap2",
     });
 
     const channel = pusher.subscribe("messages");
