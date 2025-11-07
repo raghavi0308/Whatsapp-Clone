@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const Rooms = require("./dbRooms");
@@ -9,15 +10,20 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const pusher = new Pusher({
-  appId: "1330597",
-  key: "6fbb654a0e0b670de165",
-  secret: "a96c94ba1f510bc260e2",
-  cluster: "ap2",
+  appId: process.env.PUSHER_APP_ID || "1330597",
+  key: process.env.PUSHER_KEY || "6fbb654a0e0b670de165",
+  secret: process.env.PUSHER_SECRET || "a96c94ba1f510bc260e2",
+  cluster: process.env.PUSHER_CLUSTER || "ap2",
   useTLS: true,
 });
 
+// Parse CORS origins from environment variable or use defaults
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ["http://localhost:3000", "http://127.0.0.1:3000"];
+
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+  origin: corsOrigins,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
@@ -29,7 +35,7 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-const dbUrl = "mongodb://localhost:27017/";
+const dbUrl = process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb://localhost:27017/";
 
 mongoose.connect(dbUrl);
 
