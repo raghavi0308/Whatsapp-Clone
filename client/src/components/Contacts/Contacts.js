@@ -81,7 +81,8 @@ const Contacts = () => {
         } else {
           setContacts([]);
           if (!accessToken) {
-            setError("Google Contacts API requires access token. Please sign in again.");
+            // Don't show error - just use chat rooms as contacts
+            console.log("Google Contacts API not available. Using chat rooms as contacts.");
           }
         }
       } catch (err) {

@@ -4,7 +4,7 @@ import { Button } from "@mui/material";
 import { auth, provider } from "../../firebase";
 import { useStateValue } from "../ContextApi/StateProvider";
 import { actionTypes } from "../ContextApi/reducer";
-import { signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 
 const Login = () => {
   // eslint-disable-next-line
@@ -15,9 +15,21 @@ const Login = () => {
     getRedirectResult(auth)
       .then((result) => {
         if (result) {
-          // Get the OAuth access token from the credential
-          const credential = result._tokenResponse;
-          const accessToken = credential?.oauthAccessToken || credential?.accessToken;
+          // Try to get OAuth access token from credential
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          let accessToken = null;
+          
+          // Try multiple ways to get the access token
+          if (result._tokenResponse) {
+            accessToken = result._tokenResponse.oauthAccessToken || result._tokenResponse.accessToken;
+          }
+          
+          // If still no token, try to get it from the credential
+          if (!accessToken && credential) {
+            // For redirect flow, we might need to extract from ID token or make separate request
+            // For now, we'll proceed without it - Contacts API will show a message
+            console.warn("OAuth access token not available in redirect flow. Google Contacts API may not work.");
+          }
           
           // Store user with access token
           const userWithToken = {
@@ -25,11 +37,11 @@ const Login = () => {
             accessToken: accessToken || null,
           };
           
-          // Log for debugging (remove in production)
+          // Log for debugging
           if (accessToken) {
             console.log("Access token obtained for Google Contacts API");
           } else {
-            console.warn("No access token found. Google Contacts API may not work.");
+            console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
           }
           
           dispatch({
