@@ -10,7 +10,7 @@ import axios from "./axios";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useStateValue } from "./components/ContextApi/StateProvider";
 import { auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { actionTypes } from "./components/ContextApi/reducer";
 
 const App = () => {
@@ -18,6 +18,37 @@ const App = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
+
+  // Handle redirect result first (before auth state listener)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          // Try to get OAuth access token from credential
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          let accessToken = null;
+          
+          // Try multiple ways to get the access token
+          if (result._tokenResponse) {
+            accessToken = result._tokenResponse.oauthAccessToken || result._tokenResponse.accessToken;
+          }
+          
+          // Store access token in ref for later use
+          if (accessToken) {
+            accessTokenRef.current = accessToken;
+            console.log("Access token obtained for Google Contacts API");
+          } else {
+            console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
+          }
+        }
+      })
+      .catch((err) => {
+        // Ignore errors - auth state listener will handle authentication
+        if (err.code !== "auth/cancelled-popup-request") {
+          console.error("Redirect result error:", err);
+        }
+      });
+  }, []);
 
   // Listen for authentication state changes
   useEffect(() => {
