@@ -1,24 +1,80 @@
 .sidebarChat {
   display: flex;
-  padding: 20px;
+  align-items: center;
+  padding: 10px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #f6f6f6;
+  border-bottom: 1px solid #313d45;
+  transition: background-color 0.2s ease;
+  position: relative;
+  user-select: none;
+  background-color: #111b21;
 }
 
 a {
   text-decoration: none !important;
-  color: black;
+  color: inherit;
+  display: flex;
+  width: 100%;
 }
 
 .sidebarChat:hover {
-  background-color: #ebebeb;
+  background-color: #202c33;
 }
 
-.sidebarChat__info > h2 {
-  font-size: 16px;
-  margin-bottom: 8px;
+.sidebarChat:active {
+  background-color: #2a3942;
+}
+
+.sidebarChat--pinned {
+  background-color: #202c33;
+  border-left: 3px solid #00a884;
+}
+
+.sidebarChat--muted {
+  opacity: 0.7;
 }
 
 .sidebarChat__info {
-  margin-left: 15px;
+  margin-left: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebarChat__info > h2 {
+  font-size: 17px;
+  font-weight: 400;
+  margin: 0 0 4px 0;
+  color: #e9edef;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebarChat__pinIcon {
+  font-size: 16px !important;
+  color: #00a884;
+  transform: rotate(45deg);
+}
+
+.sidebarChat__starIcon {
+  font-size: 16px !important;
+  color: #ffc107;
+}
+
+.sidebarChat__info > p {
+  font-size: 14px;
+  color: #8696a0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarChat > .MuiAvatar-root {
+  width: 49px !important;
+  height: 49px !important;
+  flex-shrink: 0;
 }

@@ -16,11 +16,20 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-app.use(express.json());
+const corsOptions = {
+  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
 
-app.use(cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
-const dbUrl = "mongodb url";
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+const dbUrl = "mongodb://localhost:27017/";
 
 mongoose.connect(dbUrl);
 
@@ -41,6 +50,12 @@ db.once("open", () => {
       console.log("Not a expected event to trigger");
     }
   });
+  changeStream.on("error", (err) => {
+    console.log("Room changeStream error:", err && (err.codeName || err.message));
+    try {
+      changeStream.close();
+    } catch (e) {}
+  });
 
   const msgCollection = db.collection("messages");
   const changeStream1 = msgCollection.watch();
@@ -53,6 +68,12 @@ db.once("open", () => {
     } else {
       console.log("Not a expected event to trigger");
     }
+  });
+  changeStream1.on("error", (err) => {
+    console.log("Messages changeStream error:", err && (err.codeName || err.message));
+    try {
+      changeStream1.close();
+    } catch (e) {}
   });
 });
 
@@ -108,6 +129,50 @@ app.get("/all/rooms", (req, res) => {
       return res.status(500).send(err);
     } else {
       return res.status(200).send(data);
+    }
+  });
+});
+
+app.delete("/room/:id", (req, res) => {
+  const roomId = req.params.id;
+  console.log(`Attempting to delete room: ${roomId}`);
+  
+  // Use findOneAndDelete to match the pattern used in other routes
+  Rooms.findOneAndDelete({ _id: roomId }, (err, data) => {
+    if (err) {
+      console.error("Error deleting room:", err);
+      return res.status(500).send({ error: "Error deleting room", details: err.message });
+    }
+    
+    if (!data) {
+      console.log(`Room not found: ${roomId}`);
+      return res.status(404).send({ error: "Room not found", roomId: roomId });
+    }
+    
+    // Also delete all messages in this room
+    Messages.deleteMany({ roomId: roomId }, (msgErr, msgResult) => {
+      if (msgErr) {
+        console.error("Error deleting messages:", msgErr);
+      } else {
+        console.log(`Deleted ${msgResult.deletedCount} messages for room ${roomId}`);
+      }
+    });
+    
+    console.log(`Successfully deleted room: ${roomId}`);
+    return res.status(200).send({ 
+      message: "Room deleted successfully", 
+      roomId: roomId,
+      deletedRoom: data 
+    });
+  });
+});
+
+app.delete("/messages/:id", (req, res) => {
+  Messages.deleteMany({ roomId: req.params.id }, (err, data) => {
+    if (err) {
+      return res.status(500).send(err);
+    } else {
+      return res.status(200).send({ message: "Messages cleared successfully", deletedCount: data.deletedCount });
     }
   });
 });

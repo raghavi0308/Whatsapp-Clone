@@ -1,0 +1,147 @@
+.contacts {
+  display: flex;
+  flex-direction: column;
+  flex: 0.65;
+  background-color: #ffffff;
+  border-left: 1px solid #e9edef;
+}
+
+.contacts__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: #f0f2f5;
+  border-bottom: 1px solid #e9edef;
+  min-height: 60px;
+}
+
+.contacts__header > h2 {
+  font-size: 20px;
+  font-weight: 500;
+  color: #111b21;
+  margin: 0;
+}
+
+.contacts__headerRight > .MuiSvgIcon-root {
+  color: #54656f;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.contacts__headerRight > .MuiSvgIcon-root:hover {
+  color: #25d366;
+}
+
+.contacts__search {
+  display: flex;
+  align-items: center;
+  background-color: #f0f2f5;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9edef;
+}
+
+.contacts__search > .MuiSvgIcon-root {
+  color: #8696a0;
+  margin: 0 8px;
+  font-size: 20px !important;
+}
+
+.contacts__search > input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  font-size: 14px;
+  color: #111b21;
+  font-family: inherit;
+}
+
+.contacts__search > input::placeholder {
+  color: #8696a0;
+}
+
+.contacts__list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #ffffff;
+}
+
+.contacts__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.contacts__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contacts__list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.contacts__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.contacts__item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #e9edef;
+  transition: background-color 0.2s ease;
+}
+
+.contacts__item:hover {
+  background-color: #f0f2f5;
+}
+
+.contacts__item:active {
+  background-color: #e4e6eb;
+}
+
+.contacts__item > .MuiAvatar-root {
+  margin-right: 12px;
+  width: 49px !important;
+  height: 49px !important;
+  flex-shrink: 0;
+}
+
+.contacts__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contacts__info > h3 {
+  margin: 0 0 4px 0;
+  font-size: 17px;
+  font-weight: 400;
+  color: #111b21;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contacts__info > p {
+  margin: 0;
+  font-size: 14px;
+  color: #667781;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contacts__empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #667781;
+}
+
+.contacts__empty > p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+
