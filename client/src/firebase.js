@@ -12,7 +12,7 @@ const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyC6gC534cbL2Yp0UOng-KA6ReIIlRXxRts",
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "whatsapp-clone-1ff34.firebaseapp.com",
   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "whatsapp-clone-1ff34",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "whatsapp-clone-1ff34.firebasestorage.app",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "whatsapp-clone-1ff34.appspot.com",
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "638929699628",
   appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:638929699628:web:902af096850e3bb9d1e289",
 };
