@@ -19,8 +19,17 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 
-  // Handle redirect result first (before auth state listener)
+  // Handle authentication - check redirect result first, then listen for auth changes
   useEffect(() => {
+    let timeoutId;
+    let unsubscribe;
+    
+    // Set a timeout to ensure loading doesn't stay forever (2 seconds)
+    timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+
+    // First, check for redirect result
     getRedirectResult(auth)
       .then((result) => {
         if (result) {
@@ -40,6 +49,18 @@ const App = () => {
           } else {
             console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
           }
+          
+          // User is authenticated from redirect - set user state immediately
+          const userWithToken = {
+            ...result.user,
+            accessToken: accessTokenRef.current || null,
+          };
+          dispatch({
+            type: actionTypes.SET_USER,
+            user: userWithToken,
+          });
+          setLoading(false);
+          clearTimeout(timeoutId);
         }
       })
       .catch((err) => {
@@ -47,59 +68,51 @@ const App = () => {
         if (err.code !== "auth/cancelled-popup-request") {
           console.error("Redirect result error:", err);
         }
-      });
-  }, []);
-
-  // Listen for authentication state changes
-  useEffect(() => {
-    let timeoutId;
-    
-    // Set a timeout to ensure loading doesn't stay forever (1.5 seconds)
-    timeoutId = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-
-    try {
-      const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-        clearTimeout(timeoutId);
+      })
+      .finally(() => {
+        // Set up auth state listener after checking redirect result
         try {
-          if (authUser) {
-            // User is signed in - preserve accessToken if it exists
-            const userWithToken = {
-              ...authUser,
-              accessToken: accessTokenRef.current || null,
-            };
-            dispatch({
-              type: actionTypes.SET_USER,
-              user: userWithToken,
-            });
-          } else {
-            // User is signed out
-            accessTokenRef.current = null;
-            dispatch({
-              type: actionTypes.SET_USER,
-              user: null,
-            });
-          }
-        } catch (dispatchError) {
-          console.error("Error dispatching user state:", dispatchError);
-        } finally {
+          unsubscribe = onAuthStateChanged(auth, (authUser) => {
+            clearTimeout(timeoutId);
+            try {
+              if (authUser) {
+                // User is signed in - preserve accessToken if it exists
+                const userWithToken = {
+                  ...authUser,
+                  accessToken: accessTokenRef.current || null,
+                };
+                dispatch({
+                  type: actionTypes.SET_USER,
+                  user: userWithToken,
+                });
+              } else {
+                // User is signed out
+                accessTokenRef.current = null;
+                dispatch({
+                  type: actionTypes.SET_USER,
+                  user: null,
+                });
+              }
+            } catch (dispatchError) {
+              console.error("Error dispatching user state:", dispatchError);
+            } finally {
+              setLoading(false);
+            }
+          });
+        } catch (error) {
+          clearTimeout(timeoutId);
+          console.error("Error setting up auth listener:", error);
           setLoading(false);
         }
       });
 
-      // Cleanup subscription on unmount
-      return () => {
-        clearTimeout(timeoutId);
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      };
-    } catch (error) {
+    // Cleanup subscription on unmount
+    return () => {
       clearTimeout(timeoutId);
-      console.error("Error setting up auth listener:", error);
-      setLoading(false);
-    }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [dispatch]);
 
   // Update accessToken ref when user changes
