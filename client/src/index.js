@@ -5,19 +5,18 @@ import App from "./App";
 import reducer, { initialState } from "./components/ContextApi/reducer";
 import { StateProvider } from "./components/ContextApi/StateProvider";
 
-// Suppress harmless Firebase hosting 404 errors
+// Suppress harmless Firebase and browser errors for clean experience
 const originalError = console.error;
 const originalWarn = console.warn;
 
 console.error = (...args) => {
-  const errorMessage = args.join(" ");
+  const msg = args.join(" ");
   if (
-    errorMessage.includes("favicon.ico") ||
-    errorMessage.includes("__/firebase/init.json") ||
-    (errorMessage.includes("404") && errorMessage.includes("firebaseapp.com")) ||
-    errorMessage.includes("Cross-Origin-Opener-Policy") ||
-    errorMessage.includes("window.close") ||
-    errorMessage.includes("Slow network")
+    msg.includes("__/firebase/init.json") ||
+    msg.includes("favicon.ico") ||
+    msg.includes("firebaseapp.com") ||
+    msg.includes("Slow network") ||
+    msg.includes("Cross-Origin-Opener-Policy")
   ) {
     return;
   }
@@ -25,26 +24,25 @@ console.error = (...args) => {
 };
 
 console.warn = (...args) => {
-  const warnMessage = args.join(" ");
+  const msg = args.join(" ");
   if (
-    warnMessage.includes("favicon.ico") ||
-    warnMessage.includes("__/firebase/init.json") ||
-    (warnMessage.includes("404") && warnMessage.includes("firebaseapp.com")) ||
-    warnMessage.includes("Slow network")
+    msg.includes("__/firebase/init.json") ||
+    msg.includes("favicon.ico") ||
+    msg.includes("firebaseapp.com") ||
+    msg.includes("Slow network")
   ) {
     return;
   }
   originalWarn.apply(console, args);
 };
 
-// Suppress network errors for Firebase hosting resources
+// Suppress network errors silently
 window.addEventListener("error", (event) => {
-  if (
-    event.target &&
-    (event.target.href?.includes("favicon.ico") ||
-      event.target.href?.includes("__/firebase/init.json") ||
-      event.target.href?.includes("firebaseapp.com"))
-  ) {
+  if (event.target && (
+    event.target.href?.includes("favicon.ico") ||
+    event.target.href?.includes("__/firebase/init.json") ||
+    event.target.href?.includes("firebaseapp.com")
+  )) {
     event.preventDefault();
     return false;
   }

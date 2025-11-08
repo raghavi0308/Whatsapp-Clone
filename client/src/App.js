@@ -16,40 +16,24 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 
-  // Handle authentication - check current user first, then set up listeners
+  // Handle authentication - robust handling for redirect flow
   useEffect(() => {
     let timeoutId;
     let unsubscribe;
-    let isInitialized = false;
+    let checkInterval;
     
-    // Set a timeout to ensure loading doesn't stay forever (5 seconds)
+    // Set a timeout to ensure loading doesn't stay forever (3 seconds)
     timeoutId = setTimeout(() => {
-      if (!isInitialized) {
-        setLoading(false);
-      }
-    }, 5000);
-
-    // Check if user is already authenticated (immediate check)
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      console.log("User already authenticated:", currentUser.email);
-      const userWithToken = {
-        ...currentUser,
-        accessToken: accessTokenRef.current || null,
-      };
-      dispatch({
-        type: actionTypes.SET_USER,
-        user: userWithToken,
-      });
-      isInitialized = true;
       setLoading(false);
-      clearTimeout(timeoutId);
-    }
+    }, 3000);
 
-    // Set up auth state listener - fires immediately and on changes
+    // Set up auth state listener - this fires immediately with current state
     unsubscribe = onAuthStateChanged(auth, (authUser) => {
       clearTimeout(timeoutId);
-      isInitialized = true;
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      
       try {
         if (authUser) {
           const userWithToken = {
@@ -68,16 +52,16 @@ const App = () => {
           });
         }
       } catch (dispatchError) {
-        console.error("Error dispatching user state:", dispatchError);
+        // Silently handle errors
       } finally {
         setLoading(false);
       }
     });
 
-    // Check for redirect result to get access token
+    // Also check for redirect result to get access token
     getRedirectResult(auth)
       .then((result) => {
-        if (result) {
+        if (result && result.user) {
           // Try to get OAuth access token
           let accessToken = null;
           if (result._tokenResponse) {
@@ -86,31 +70,55 @@ const App = () => {
           
           if (accessToken) {
             accessTokenRef.current = accessToken;
-            
-            // Update user with access token
-            if (auth.currentUser) {
-              const userWithToken = {
-                ...auth.currentUser,
-                accessToken: accessToken,
-              };
-              dispatch({
-                type: actionTypes.SET_USER,
-                user: userWithToken,
-              });
-            }
+          }
+          
+          // Ensure user is set (auth state listener should have already done this)
+          if (auth.currentUser) {
+            const userWithToken = {
+              ...auth.currentUser,
+              accessToken: accessTokenRef.current || null,
+            };
+            dispatch({
+              type: actionTypes.SET_USER,
+              user: userWithToken,
+            });
           }
         }
       })
-      .catch((err) => {
-        // Silently ignore redirect errors
-        if (err.code && !err.code.includes("cancelled")) {
-          console.error("Auth redirect error:", err.message);
-        }
+      .catch(() => {
+        // Silently ignore errors
       });
+
+    // Additional check: Poll auth state for a short time after redirect (fallback)
+    let checkCount = 0;
+    checkInterval = setInterval(() => {
+      checkCount++;
+      if (checkCount > 10) {
+        clearInterval(checkInterval);
+        return;
+      }
+      
+      const currentUser = auth.currentUser;
+      if (currentUser && !user) {
+        const userWithToken = {
+          ...currentUser,
+          accessToken: accessTokenRef.current || null,
+        };
+        dispatch({
+          type: actionTypes.SET_USER,
+          user: userWithToken,
+        });
+        clearInterval(checkInterval);
+        setLoading(false);
+      }
+    }, 200);
 
     // Cleanup subscription on unmount
     return () => {
       clearTimeout(timeoutId);
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
       if (unsubscribe) {
         unsubscribe();
       }

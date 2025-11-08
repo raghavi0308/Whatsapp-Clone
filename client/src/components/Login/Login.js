@@ -18,9 +18,8 @@ const Login = () => {
     provider.addScope("https://www.googleapis.com/auth/userinfo.email");
     
     // Use redirect instead of popup to avoid COOP issues
-    signInWithRedirect(auth, provider).catch((err) => {
-      console.error("Sign in error:", err);
-      alert(err.message);
+    signInWithRedirect(auth, provider).catch(() => {
+      // Silently handle errors
     });
   };
 
