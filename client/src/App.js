@@ -18,66 +18,58 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 
-  // Handle authentication - check redirect result first, then set up auth state listener
+  // Handle authentication - set up auth state listener immediately, then check redirect result
   useEffect(() => {
     let timeoutId;
     let unsubscribe;
-    let isInitialized = false;
+    let userSet = false;
     
-    // Set up auth state listener function (defined first so it can be called)
-    const setupAuthListener = () => {
-      if (isInitialized) return;
-      isInitialized = true;
-      clearTimeout(timeoutId);
-      
-      console.log("Setting up auth state listener...");
-      unsubscribe = onAuthStateChanged(auth, (authUser) => {
-        clearTimeout(timeoutId);
-        try {
-          if (authUser) {
-            console.log("Auth state changed - user signed in:", authUser.displayName || authUser.email);
-            const userWithToken = {
-              ...authUser,
-              accessToken: accessTokenRef.current || null,
-            };
-            dispatch({
-              type: actionTypes.SET_USER,
-              user: userWithToken,
-            });
-          } else {
-            console.log("Auth state changed - user signed out");
-            accessTokenRef.current = null;
-            dispatch({
-              type: actionTypes.SET_USER,
-              user: null,
-            });
-          }
-        } catch (dispatchError) {
-          console.error("Error dispatching user state:", dispatchError);
-        } finally {
-          setLoading(false);
-        }
-      });
-    };
-
-    // Set a timeout to ensure loading doesn't stay forever (5 seconds)
+    // Set a timeout to ensure loading doesn't stay forever (3 seconds)
     timeoutId = setTimeout(() => {
-      if (!isInitialized) {
-        console.log("Auth check timeout - initializing auth state listener");
-        setupAuthListener();
+      if (!userSet) {
+        console.log("Auth check timeout");
+        setLoading(false);
       }
-    }, 5000);
+    }, 3000);
 
-    // First, check for redirect result (this is critical for redirect flow)
+    // Set up auth state listener IMMEDIATELY - this will fire right away with current auth state
+    console.log("Setting up auth state listener immediately...");
+    unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      clearTimeout(timeoutId);
+      try {
+        if (authUser) {
+          console.log("Auth state changed - user signed in:", authUser.displayName || authUser.email);
+          const userWithToken = {
+            ...authUser,
+            accessToken: accessTokenRef.current || null,
+          };
+          dispatch({
+            type: actionTypes.SET_USER,
+            user: userWithToken,
+          });
+          userSet = true;
+        } else {
+          console.log("Auth state changed - user signed out");
+          accessTokenRef.current = null;
+          dispatch({
+            type: actionTypes.SET_USER,
+            user: null,
+          });
+        }
+      } catch (dispatchError) {
+        console.error("Error dispatching user state:", dispatchError);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Also check for redirect result to get access token (runs in parallel)
     console.log("Checking for redirect result...");
     getRedirectResult(auth)
       .then((result) => {
         console.log("Redirect result:", result ? "User authenticated" : "No redirect result");
         
         if (result) {
-          isInitialized = true;
-          clearTimeout(timeoutId);
-          
           // Try to get OAuth access token from credential
           let accessToken = null;
           if (result._tokenResponse) {
@@ -88,47 +80,33 @@ const App = () => {
           if (accessToken) {
             accessTokenRef.current = accessToken;
             console.log("Access token obtained for Google Contacts API");
-          }
-          
-          // User is authenticated from redirect - set user state immediately
-          const userWithToken = {
-            ...result.user,
-            accessToken: accessTokenRef.current || null,
-          };
-          console.log("Dispatching user from redirect result:", userWithToken.displayName || userWithToken.email);
-          dispatch({
-            type: actionTypes.SET_USER,
-            user: userWithToken,
-          });
-          setLoading(false);
-        } else {
-          // No redirect result - set up auth state listener to check current auth state
-          console.log("No redirect result - checking current auth state");
-          if (!isInitialized) {
-            setupAuthListener();
+            
+            // Update user with access token if user is already set
+            if (auth.currentUser) {
+              const userWithToken = {
+                ...auth.currentUser,
+                accessToken: accessToken,
+              };
+              dispatch({
+                type: actionTypes.SET_USER,
+                user: userWithToken,
+              });
+            }
+          } else {
+            console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
           }
         }
       })
       .catch((err) => {
-        console.error("Redirect result error:", err);
-        // Set up auth state listener even if redirect check fails
-        if (!isInitialized) {
-          setupAuthListener();
+        // Ignore errors - auth state listener already handled authentication
+        if (err.code !== "auth/cancelled-popup-request") {
+          console.error("Redirect result error:", err);
         }
       });
-
-    // Also set up auth listener as fallback (in case redirect result takes time)
-    // But delay it slightly to give redirect result priority
-    const fallbackTimeout = setTimeout(() => {
-      if (!isInitialized) {
-        setupAuthListener();
-      }
-    }, 1000);
 
     // Cleanup subscription on unmount
     return () => {
       clearTimeout(timeoutId);
-      clearTimeout(fallbackTimeout);
       if (unsubscribe) {
         unsubscribe();
       }
