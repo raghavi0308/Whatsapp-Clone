@@ -19,19 +19,58 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 
-  // Handle authentication - check redirect result first, then listen for auth changes
+  // Handle authentication - set up auth state listener immediately, then check redirect result
   useEffect(() => {
     let timeoutId;
     let unsubscribe;
+    let userSet = false;
     
-    // Set a timeout to ensure loading doesn't stay forever (2 seconds)
+    // Set a timeout to ensure loading doesn't stay forever (3 seconds)
     timeoutId = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
+      if (!userSet) {
+        console.log("Auth check timeout");
+        setLoading(false);
+      }
+    }, 3000);
 
-    // First, check for redirect result
+    // Set up auth state listener immediately - this will fire right away if user is already authenticated
+    console.log("Setting up auth state listener...");
+    unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      clearTimeout(timeoutId);
+      try {
+        if (authUser) {
+          console.log("Auth state changed - user signed in:", authUser.displayName);
+          // User is signed in - preserve accessToken if it exists
+          const userWithToken = {
+            ...authUser,
+            accessToken: accessTokenRef.current || null,
+          };
+          dispatch({
+            type: actionTypes.SET_USER,
+            user: userWithToken,
+          });
+          userSet = true;
+        } else {
+          console.log("Auth state changed - user signed out");
+          // User is signed out
+          accessTokenRef.current = null;
+          dispatch({
+            type: actionTypes.SET_USER,
+            user: null,
+          });
+        }
+      } catch (dispatchError) {
+        console.error("Error dispatching user state:", dispatchError);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Also check for redirect result to get access token
+    console.log("Checking for redirect result...");
     getRedirectResult(auth)
       .then((result) => {
+        console.log("Redirect result:", result ? "User authenticated" : "No redirect result");
         if (result) {
           // Try to get OAuth access token from credential
           const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -46,63 +85,29 @@ const App = () => {
           if (accessToken) {
             accessTokenRef.current = accessToken;
             console.log("Access token obtained for Google Contacts API");
+            
+            // The auth state listener will have already set the user, so we just need to update with access token
+            // We'll update the user state with the access token
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              const userWithToken = {
+                ...currentUser,
+                accessToken: accessToken,
+              };
+              dispatch({
+                type: actionTypes.SET_USER,
+                user: userWithToken,
+              });
+            }
           } else {
             console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
           }
-          
-          // User is authenticated from redirect - set user state immediately
-          const userWithToken = {
-            ...result.user,
-            accessToken: accessTokenRef.current || null,
-          };
-          dispatch({
-            type: actionTypes.SET_USER,
-            user: userWithToken,
-          });
-          setLoading(false);
-          clearTimeout(timeoutId);
         }
       })
       .catch((err) => {
-        // Ignore errors - auth state listener will handle authentication
+        // Ignore errors - auth state listener already handled authentication
         if (err.code !== "auth/cancelled-popup-request") {
           console.error("Redirect result error:", err);
-        }
-      })
-      .finally(() => {
-        // Set up auth state listener after checking redirect result
-        try {
-          unsubscribe = onAuthStateChanged(auth, (authUser) => {
-            clearTimeout(timeoutId);
-            try {
-              if (authUser) {
-                // User is signed in - preserve accessToken if it exists
-                const userWithToken = {
-                  ...authUser,
-                  accessToken: accessTokenRef.current || null,
-                };
-                dispatch({
-                  type: actionTypes.SET_USER,
-                  user: userWithToken,
-                });
-              } else {
-                // User is signed out
-                accessTokenRef.current = null;
-                dispatch({
-                  type: actionTypes.SET_USER,
-                  user: null,
-                });
-              }
-            } catch (dispatchError) {
-              console.error("Error dispatching user state:", dispatchError);
-            } finally {
-              setLoading(false);
-            }
-          });
-        } catch (error) {
-          clearTimeout(timeoutId);
-          console.error("Error setting up auth listener:", error);
-          setLoading(false);
         }
       });
 
@@ -113,7 +118,8 @@ const App = () => {
         unsubscribe();
       }
     };
-  }, [dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update accessToken ref when user changes
   useEffect(() => {
