@@ -117,7 +117,7 @@ const SidebarChat = ({ addNewChat, id, name, photo, email, onChatUpdate }) => {
     if (window.confirm(`Are you sure you want to delete the chat with ${name}? This action cannot be undone.`)) {
       try {
         // Delete room from backend
-        const response = await axios.delete(`/room/${id}`);
+        await axios.delete(`/room/${id}`);
         // Clear local preferences
         localStorage.removeItem(`chat_prefs_${id}`);
         alert("Chat deleted successfully!");

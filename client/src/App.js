@@ -15,7 +15,6 @@ import { actionTypes } from "./components/ContextApi/reducer";
 
 const App = () => {
   const [{ user }, dispatch] = useStateValue();
-  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 

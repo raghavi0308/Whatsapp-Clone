@@ -5,7 +5,6 @@ import { SearchOutlined, MoreVert } from "@mui/icons-material";
 import { useStateValue } from "../ContextApi/StateProvider";
 import axios from "../../axios";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../../firebase";
 import { fetchGoogleContacts } from "../../services/googleContacts";
 
 const Contacts = () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import "./Sidebar.css";
 import {
   DonutLarge,
@@ -61,40 +61,7 @@ const Sidebar = () => {
     { code: "hi", name: "हिन्दी" },
   ];
 
-  const fetchRooms = () => {
-    axios
-      .get(`/all/rooms`)
-      .then((response) => {
-        // Sort rooms: pinned first, then favorites, then regular
-        const sortedRooms = response.data.sort((a, b) => {
-          const prefsA = JSON.parse(localStorage.getItem(`chat_prefs_${a._id}`) || "{}");
-          const prefsB = JSON.parse(localStorage.getItem(`chat_prefs_${b._id}`) || "{}");
-          
-          // Pinned chats first
-          if (prefsA.pinned && !prefsB.pinned) return -1;
-          if (!prefsA.pinned && prefsB.pinned) return 1;
-          
-          // Then favorites
-          if (prefsA.favorite && !prefsB.favorite) return -1;
-          if (!prefsA.favorite && prefsB.favorite) return 1;
-          
-          // Then by timestamp (newest first)
-          return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
-        });
-        setRooms(sortedRooms);
-        
-        // Calculate unread count
-        calculateUnreadCount(sortedRooms);
-      })
-      .catch((err) => {
-        console.error("Error fetching rooms:", err);
-        // If server is not running, show empty array
-        setRooms([]);
-        setUnreadCount(0);
-      });
-  };
-
-  const calculateUnreadCount = async (roomsList) => {
+  const calculateUnreadCount = useCallback(async (roomsList) => {
     if (!user || !roomsList || roomsList.length === 0) {
       setUnreadCount(0);
       return;
@@ -130,18 +97,51 @@ const Sidebar = () => {
     }
     
     setUnreadCount(totalUnread);
-  };
+  }, [user]);
+
+  const fetchRooms = useCallback(() => {
+    axios
+      .get(`/all/rooms`)
+      .then((response) => {
+        // Sort rooms: pinned first, then favorites, then regular
+        const sortedRooms = response.data.sort((a, b) => {
+          const prefsA = JSON.parse(localStorage.getItem(`chat_prefs_${a._id}`) || "{}");
+          const prefsB = JSON.parse(localStorage.getItem(`chat_prefs_${b._id}`) || "{}");
+          
+          // Pinned chats first
+          if (prefsA.pinned && !prefsB.pinned) return -1;
+          if (!prefsA.pinned && prefsB.pinned) return 1;
+          
+          // Then favorites
+          if (prefsA.favorite && !prefsB.favorite) return -1;
+          if (!prefsA.favorite && prefsB.favorite) return 1;
+          
+          // Then by timestamp (newest first)
+          return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+        });
+        setRooms(sortedRooms);
+        
+        // Calculate unread count
+        calculateUnreadCount(sortedRooms);
+      })
+      .catch((err) => {
+        console.error("Error fetching rooms:", err);
+        // If server is not running, show empty array
+        setRooms([]);
+        setUnreadCount(0);
+      });
+  }, [calculateUnreadCount]);
 
   useEffect(() => {
     fetchRooms();
-  }, [refreshKey]);
+  }, [refreshKey, fetchRooms]);
 
   // Recalculate unread count when rooms change or messages update
   useEffect(() => {
     if (rooms.length > 0 && user) {
       calculateUnreadCount(rooms);
     }
-  }, [rooms, user, refreshKey]);
+  }, [rooms, user, refreshKey, calculateUnreadCount]);
   
   // Listen for new messages to update unread count in real-time
   useEffect(() => {
@@ -170,7 +170,7 @@ const Sidebar = () => {
       channel.unbind_all();
       channel.unsubscribe();
     };
-  }, [user]);
+  }, [user, fetchRooms]);
 
   // Load profile picture from localStorage on mount if user exists
   useEffect(() => {

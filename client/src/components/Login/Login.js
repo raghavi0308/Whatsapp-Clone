@@ -3,7 +3,6 @@ import "./Login.css";
 import { Button } from "@mui/material";
 import { auth, provider } from "../../firebase";
 import { useStateValue } from "../ContextApi/StateProvider";
-import { actionTypes } from "../ContextApi/reducer";
 import { signInWithRedirect } from "firebase/auth";
 
 const Login = () => {
