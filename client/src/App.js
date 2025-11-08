@@ -5,12 +5,10 @@ import Chat from "./components/Chat/Chat";
 import Sidebar from "./components/Sidebar/Sidebar";
 import Status from "./components/Status/Status";
 import Contacts from "./components/Contacts/Contacts";
-import Pusher from "pusher-js";
-import axios from "./axios";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useStateValue } from "./components/ContextApi/StateProvider";
 import { auth } from "./firebase";
-import { onAuthStateChanged, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { actionTypes } from "./components/ContextApi/reducer";
 
 const App = () => {
@@ -18,27 +16,42 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const accessTokenRef = useRef(null);
 
-  // Handle authentication - set up auth state listener immediately, then check redirect result
+  // Handle authentication - check current user first, then set up listeners
   useEffect(() => {
     let timeoutId;
     let unsubscribe;
-    let userSet = false;
+    let isInitialized = false;
     
-    // Set a timeout to ensure loading doesn't stay forever (3 seconds)
+    // Set a timeout to ensure loading doesn't stay forever (5 seconds)
     timeoutId = setTimeout(() => {
-      if (!userSet) {
-        console.log("Auth check timeout");
+      if (!isInitialized) {
         setLoading(false);
       }
-    }, 3000);
+    }, 5000);
 
-    // Set up auth state listener IMMEDIATELY - this will fire right away with current auth state
-    console.log("Setting up auth state listener immediately...");
+    // Check if user is already authenticated (immediate check)
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      console.log("User already authenticated:", currentUser.email);
+      const userWithToken = {
+        ...currentUser,
+        accessToken: accessTokenRef.current || null,
+      };
+      dispatch({
+        type: actionTypes.SET_USER,
+        user: userWithToken,
+      });
+      isInitialized = true;
+      setLoading(false);
+      clearTimeout(timeoutId);
+    }
+
+    // Set up auth state listener - fires immediately and on changes
     unsubscribe = onAuthStateChanged(auth, (authUser) => {
       clearTimeout(timeoutId);
+      isInitialized = true;
       try {
         if (authUser) {
-          console.log("Auth state changed - user signed in:", authUser.displayName || authUser.email);
           const userWithToken = {
             ...authUser,
             accessToken: accessTokenRef.current || null,
@@ -47,9 +60,7 @@ const App = () => {
             type: actionTypes.SET_USER,
             user: userWithToken,
           });
-          userSet = true;
         } else {
-          console.log("Auth state changed - user signed out");
           accessTokenRef.current = null;
           dispatch({
             type: actionTypes.SET_USER,
@@ -63,25 +74,20 @@ const App = () => {
       }
     });
 
-    // Also check for redirect result to get access token (runs in parallel)
-    console.log("Checking for redirect result...");
+    // Check for redirect result to get access token
     getRedirectResult(auth)
       .then((result) => {
-        console.log("Redirect result:", result ? "User authenticated" : "No redirect result");
-        
         if (result) {
-          // Try to get OAuth access token from credential
+          // Try to get OAuth access token
           let accessToken = null;
           if (result._tokenResponse) {
             accessToken = result._tokenResponse.oauthAccessToken || result._tokenResponse.accessToken;
           }
           
-          // Store access token in ref
           if (accessToken) {
             accessTokenRef.current = accessToken;
-            console.log("Access token obtained for Google Contacts API");
             
-            // Update user with access token if user is already set
+            // Update user with access token
             if (auth.currentUser) {
               const userWithToken = {
                 ...auth.currentUser,
@@ -92,15 +98,13 @@ const App = () => {
                 user: userWithToken,
               });
             }
-          } else {
-            console.warn("No access token found. Google Contacts API will not work. This is normal with redirect flow.");
           }
         }
       })
       .catch((err) => {
-        // Ignore errors - auth state listener already handled authentication
-        if (err.code !== "auth/cancelled-popup-request") {
-          console.error("Redirect result error:", err);
+        // Silently ignore redirect errors
+        if (err.code && !err.code.includes("cancelled")) {
+          console.error("Auth redirect error:", err.message);
         }
       });
 
@@ -120,34 +124,6 @@ const App = () => {
       accessTokenRef.current = user.accessToken;
     }
   }, [user?.accessToken]);
-
-  // useEffect(() => {
-  //   axios
-  //     .get("/messages/sync")
-  //     .then((response) => {
-  //       setMessages(response.data);
-  //     })
-  //     .catch((err) => {
-  //       console.log(err);
-  //     });
-  // }, []);
-
-  // useEffect(() => {
-  //   const pusher = new Pusher("6fbb654a0e0b670de165", {
-  //     cluster: "ap2",
-  //   });
-
-  //   const channel = pusher.subscribe("messages");
-  //   channel.bind("inserted", function (newMessage) {
-  //     // alert(JSON.stringify(newMessage));
-  //     setMessages([...messages, newMessage]);
-  //   });
-
-  //   return () => {
-  //     channel.unbind_all();
-  //     channel.unsubscribe();
-  //   };
-  // }, [messages]);
 
   // Show loading state while checking authentication
   if (loading) {
