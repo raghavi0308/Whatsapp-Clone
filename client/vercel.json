@@ -1,4 +1,7 @@
 {
+    "builds": [
+      { "src": "package.json", "use": "@vercel/static-build" }
+    ],
     "routes": [
       {
         "src": "/manifest.json",
@@ -6,10 +9,8 @@
         "methods": ["GET"],
         "headers": { "cache-control": "public, max-age=31536000, immutable" }
       },
-      {
-        "src": "/(.*)",
-        "dest": "/index.html"
-      }
+      { "src": "/static/(.*)", "dest": "/static/$1" },
+      { "src": "/(.*)", "dest": "/index.html" }
     ]
   }
   
